@@ -1,0 +1,8 @@
+row,column,cell
+Planner,What,Define the scope of data/objects for the enterprise (placeholder).
+Planner,How,Define the high-level processes and transformation flows (placeholder).
+Owner,What,Identify business entities and responsibilities (placeholder).
+Designer,Where,Model logical locations and distribution concerns (placeholder).
+Builder,When,Plan integration points and change cadence (placeholder).
+Implementer,Why,Document motivation, constraints, and value drivers (placeholder).
+
