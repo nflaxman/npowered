@@ -14,6 +14,24 @@ This project is organized into three layers:
 2. Ingestion logic in `src/db/` loads those cells into a relational table.
 3. The web page in `src/web/` can later query/display the ingested results.
 
+## AI-mediated reification (ontology validation)
+In a veridm-enabled system, the logic layer does not only execute changes; it **validates changes against the ontology**.
+
+Conceptually:
+- A developer (the “Sub-contractor”) proposes a change (often in lower rows like Row 5).
+- veridm AI checks the proposal against:
+  - `docs/AI_CONTRACT.md` (process + constraints)
+  - Row 3 designer models (logical/architectural intent; represented as artifacts in `zachman_cells`)
+- If the change introduces inconsistencies (e.g., a new **Where** network route without a corresponding **Why** access policy intent),
+  the system flags the affected cell(s) as **Invalid** or **Unverified**.
+
+This enables a “self-healing” architecture where inconsistencies are detected early and surfaced to stakeholders in the grid UI.
+
+### Stakeholder views (same 6×6 language)
+- **Planner (strategic view)**: track Zero Trust maturity progress across the protect surface.
+- **Architect (system view)**: visualize logical flow of data between zones and layers.
+- **Security analyst (operations view)**: map denials/threats to the organizational units and cells they impact.
+
 ## Initial Implementation Targets
 - Database ingestion:
   - A simple, local-first ingestion script that can load CSV into a database.

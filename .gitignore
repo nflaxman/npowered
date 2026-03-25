@@ -5,6 +5,8 @@ __pycache__/
 # Local databases
 *.sqlite
 *.db
+*.duckdb
+*.duckdb.wal
 
 # OS/editor
 .DS_Store
