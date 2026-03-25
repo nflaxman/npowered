@@ -1,5 +1,12 @@
 # Architecture
 
+## Canonical ontology reference
+The full narrative ontology (Zachman columns/rows, Zero Trust pillars, veridm discipline, Codex prompt workflow, and cited sources) lives in:
+
+- [`docs/ZACHMAN_ONTOLOGY_FOR_AI_ARCHITECTURE.md`](ZACHMAN_ONTOLOGY_FOR_AI_ARCHITECTURE.md)
+
+Use it as the **semantic source** when extending `zachman_cells`, validation rules, and the Streamlit grid. Implementation details in this repo should stay consistent with that document unless `docs/DECISIONS.md` records an explicit deviation.
+
 ## Overview
 This project is organized into three layers:
 
