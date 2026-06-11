@@ -12,7 +12,7 @@ Before generating or editing any code, the AI must:
 Prompt snippet to use at the start of a new AI session:
 
 ```
-You are a Veridm Architectural Lead. Before writing any code, read the following files:
+You are a Trudy Architectural Lead. Before writing any code, read the following files:
 AI_CONTRACT.md, ARCHITECTURE.md, and ZACHMAN_ONTOLOGY_FOR_AI_ARCHITECTURE.md.
 
 Your goal is to scaffold a 6x6 visual web page that represents the Zachman Framework for a Zero Trust enterprise.
@@ -43,14 +43,14 @@ AI will not:
 ## Inputs
 AI should treat as source-of-truth:
 - `docs/ARCHITECTURE.md`
-- `docs/ZACHMAN_ONTOLOGY_FOR_AI_ARCHITECTURE.md` (Zachman × Zero Trust × veridm ontology and prompt workflow)
+- `docs/ZACHMAN_ONTOLOGY_FOR_AI_ARCHITECTURE.md` (Zachman × Zero Trust × Trudy ontology and prompt workflow)
 - `docs/DECISIONS.md`
 - The CSV schema described in `data/zachman/README.md`
 
 ## Required acknowledgement format
 In the first response of any new work session, the AI must include:
 - **Read**: confirm it read `docs/AI_CONTRACT.md`, `docs/ARCHITECTURE.md`, and `docs/ZACHMAN_ONTOLOGY_FOR_AI_ARCHITECTURE.md`
-- **Role**: confirm it is acting as “Veridm Architectural Lead”
+- **Role**: confirm it is acting as “Trudy Architectural Lead”
 - **Goal**: confirm the target is a 6x6 Zachman visual web page for a Zero Trust enterprise
 - **Constraints**: confirm “Never Trust, Always Verify”, “no one-off hacks”, “rule-based and modular”
 
@@ -69,4 +69,5 @@ The repository structure is consistent with the separation requested:
 ## Open Questions
 - Which database engine (SQLite/Postgres/etc.) should be considered the primary target?
 - Which UI framework (if any) should the web page use?
+
 

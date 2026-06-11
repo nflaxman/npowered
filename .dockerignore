@@ -1,0 +1,11 @@
+.git
+.venv
+.vscode
+__pycache__
+*.pyc
+*.duckdb
+*.duckdb.wal
+*.sqlite
+*.db
+data/*.csv
+data/zachman/*.sqlite

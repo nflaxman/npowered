@@ -15,6 +15,8 @@ class RuleContext:
 class RuleViolation:
     code: str
     message: str
+    remediation: str = ""
+    triplet: str = ""
 
 
 RuleFn = Callable[[RuleContext], Iterable[RuleViolation]]

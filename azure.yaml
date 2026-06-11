@@ -1,0 +1,20 @@
+name: trudy
+metadata:
+  template: trudy-azure-container-apps
+services:
+  web:
+    project: .
+    language: py
+    host: containerapp
+    docker:
+      path: Dockerfile
+infra:
+  provider: bicep
+hooks:
+  postprovision:
+    windows:
+      shell: pwsh
+      run: ./infra/scripts/postprovision.ps1
+    posix:
+      shell: sh
+      run: pwsh ./infra/scripts/postprovision.ps1

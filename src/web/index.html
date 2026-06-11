@@ -3,23 +3,794 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>VERIDM - Zachman Matrix Viewer</title>
+    <title>Trudy Operational Loop - Zachman 6x6 Ontology</title>
+    <meta
+      name="description"
+      content="Query-first operational loop for Microsoft Graph evidence, ontology digestion, Zachman 6x6 triplets, and CAB-ready remediation."
+    />
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #17212f;
+        --muted: #5d6975;
+        --line: #d8dee6;
+        --panel: #f7f9fb;
+        --panel-2: #eef3f8;
+        --accent: #0051ba;
+        --accent-soft: #e8f1ff;
+        --valid: #126b3a;
+        --valid-soft: #e9f7ee;
+        --invalid: #a83232;
+        --invalid-soft: #fff0f0;
+        --unverified: #6a5f00;
+        --unverified-soft: #fff9db;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        color: var(--ink);
+        font-family: "Segoe UI", system-ui, sans-serif;
+        background: #fff;
+      }
+      header {
+        padding: 18px 24px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(120deg, #f8fbff, #eef4fb);
+      }
+      h1 { margin: 0 0 6px; font-size: 1.35rem; }
+      h2, h3 { margin-top: 0; }
+      main {
+        display: grid;
+        grid-template-columns: minmax(660px, 1fr) 390px;
+        gap: 18px;
+        padding: 18px 24px 28px;
+      }
+      .toolbar, .panel, .matrix-wrap, .loop-card, .feed {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+      }
+      .toolbar {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(220px, 1fr));
+        gap: 12px;
+        padding: 14px;
+        margin-bottom: 14px;
+      }
+      .loop-card { padding: 14px; margin-bottom: 14px; }
+      label { display: grid; gap: 5px; font-size: 0.82rem; font-weight: 650; }
+      input, select, textarea, button {
+        font: inherit;
+        border: 1px solid #b8c1cc;
+        border-radius: 6px;
+        padding: 8px 9px;
+      }
+      textarea { min-height: 70px; resize: vertical; grid-column: 1 / -1; }
+      button {
+        border-color: var(--accent);
+        color: #fff;
+        background: var(--accent);
+        cursor: pointer;
+      }
+      button.secondary {
+        color: var(--accent);
+        background: #fff;
+      }
+      button:disabled { opacity: 0.5; cursor: not-allowed; }
+      .graph-note { color: var(--muted); font-size: 0.84rem; grid-column: 1 / -1; margin: 0; }
+      .loop-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: end;
+        margin-bottom: 12px;
+      }
+      .loop-controls label { min-width: 190px; }
+      .speed-label { min-width: 110px; }
+      .score-row {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(100px, 1fr));
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      .score {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        padding: 9px 10px;
+      }
+      .score strong { display: block; font-size: 1.2rem; }
+      .score span { color: var(--muted); font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.05em; }
+      .agent-strip {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 6px;
+      }
+      .agent-node {
+        min-height: 60px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        padding: 8px;
+        transition: background 0.2s, border-color 0.2s, transform 0.2s;
+      }
+      .agent-node.active {
+        border-color: var(--accent);
+        background: var(--accent-soft);
+        transform: translateY(-1px);
+      }
+      .agent-node.done {
+        border-color: #9ac5aa;
+        background: var(--valid-soft);
+      }
+      .agent-node strong { display: block; font-size: 0.82rem; }
+      .agent-node span { color: var(--muted); font-size: 0.74rem; }
+      .stage-line {
+        margin: 10px 0 0;
+        color: var(--muted);
+        font-size: 0.86rem;
+      }
+      .matrix-wrap { overflow: auto; }
+      table { width: 100%; border-collapse: collapse; min-width: 840px; }
+      th, td { border: 1px solid var(--line); padding: 8px; vertical-align: top; }
+      th { background: #eef2f6; font-size: 0.78rem; }
+      .row-head { width: 150px; background: #f8fafc; font-size: 0.78rem; }
+      .cell-btn {
+        width: 100%;
+        min-height: 76px;
+        color: var(--ink);
+        background: #fff;
+        border-color: #c8d0da;
+        text-align: left;
+      }
+      .cell-btn.valid { border-left: 5px solid var(--valid); background: var(--valid-soft); }
+      .cell-btn.invalid { border-left: 5px solid var(--invalid); background: var(--invalid-soft); }
+      .cell-btn.unverified { border-left: 5px solid var(--unverified); background: #fff; }
+      .cell-count { display: block; margin-top: 6px; color: var(--muted); font-size: 0.75rem; }
+      .panel { padding: 14px; align-self: start; position: sticky; top: 12px; }
+      .status { display: inline-block; padding: 3px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; }
+      .status.valid { color: #fff; background: var(--valid); }
+      .status.invalid { color: #fff; background: var(--invalid); }
+      .status.unverified { color: #fff; background: var(--unverified); }
+      .artifact, .triplet-box { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 12px; }
+      code, pre {
+        font-family: Consolas, "Liberation Mono", monospace;
+        font-size: 0.78rem;
+      }
+      pre {
+        white-space: pre-wrap;
+        background: #f4f6f8;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 9px;
+      }
+      .remediation {
+        border-left: 4px solid var(--invalid);
+        background: var(--invalid-soft);
+        padding: 8px 10px;
+        margin-top: 8px;
+        font-size: 0.86rem;
+      }
+      .feed {
+        margin-top: 14px;
+        max-height: 210px;
+        overflow-y: auto;
+      }
+      .feed-row {
+        display: grid;
+        grid-template-columns: 74px 1fr auto;
+        gap: 8px;
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--line);
+        font-size: 0.82rem;
+      }
+      .feed-row:last-child { border-bottom: 0; }
+      .feed-stage { color: var(--accent); font-weight: 700; }
+      .feed-badge {
+        border-radius: 999px;
+        background: var(--panel-2);
+        padding: 2px 8px;
+        color: var(--muted);
+        font-size: 0.74rem;
+        font-weight: 700;
+      }
+      .triplet-leg {
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        padding: 8px;
+        margin-top: 6px;
+        background: var(--panel);
+      }
+      .triplet-leg span {
+        display: block;
+        color: var(--muted);
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      @media (max-width: 980px) {
+        main { grid-template-columns: 1fr; }
+        .panel { position: static; }
+        .score-row, .agent-strip { grid-template-columns: 1fr 1fr; }
+      }
+    </style>
   </head>
   <body>
-    <h1>VERIDM - Zachman Matrix Viewer</h1>
+    <header>
+      <h1>Trudy Operational Loop - Zachman 6x6 Ontology</h1>
+      <p class="graph-note">
+        Query first. The agent digests Microsoft Graph or corpus evidence, creates Zachman triplets
+        from the ontology, checks the 6x6 matrix, and codifies remediation.
+      </p>
+    </header>
 
-    <p>
-      This is a minimal web page scaffold. Next steps are to connect it to the database ingestion
-      results (loaded from <code>data/zachman/</code>) and render row/column/cell data.
-    </p>
+    <main>
+      <section>
+        <div class="toolbar" aria-label="Graph and filter controls">
+          <label>
+            Microsoft Graph list endpoint
+            <input id="graphEndpoint" placeholder="https://graph.microsoft.com/v1.0/sites/{site-id}/lists/{list-id}/items?expand=fields" />
+          </label>
+          <label>
+            Zero Trust pillar
+            <select id="pillarFilter"></select>
+          </label>
+          <textarea id="accessToken" placeholder="Paste a Microsoft Graph bearer token for this browser session. The token is not stored."></textarea>
+          <p class="graph-note">
+            Graph rows can use native fields or SharePoint-style <code>SNY_*</code> fields.
+            Optional loop fields include <code>SNY_Query</code>, <code>SNY_Digest</code>,
+            <code>SNY_Who</code>, <code>SNY_How</code>, and <code>SNY_What</code>.
+          </p>
+          <button id="loadGraph">Query Graph, Digest, Create Triplets</button>
+          <button class="secondary" id="loadSample">Reset to sample corpus</button>
+        </div>
 
-    <h2>Where to look</h2>
-    <ul>
-      <li><code>docs/ARCHITECTURE.md</code> for the intended layering</li>
-      <li><code>docs/DECISIONS.md</code> for current choices</li>
-      <li><code>src/db/</code> for ingestion logic</li>
-      <li><code>data/zachman/</code> for the initial CSV</li>
-    </ul>
+        <div class="loop-card" aria-label="Operational loop">
+          <div class="loop-controls">
+            <label>
+              Scenario
+              <select id="scenario">
+                <option value="ca">Conditional Access hardening</option>
+                <option value="zsp">Zero Standing Privilege</option>
+                <option value="device">Device trust enforcement</option>
+                <option value="drift">Drift detection cycle</option>
+              </select>
+            </label>
+            <label class="speed-label">
+              Speed
+              <input id="speed" type="range" min="1" max="5" value="3" />
+            </label>
+            <button id="runLoop">Run loop</button>
+            <button class="secondary" id="pauseLoop">Pause</button>
+            <button class="secondary" id="resetLoop">Reset loop</button>
+          </div>
+          <div class="score-row">
+            <div class="score"><strong id="scoreStage">Idle</strong><span>Active stage</span></div>
+            <div class="score"><strong id="scoreArtifacts">0</strong><span>Artifacts</span></div>
+            <div class="score"><strong id="scoreTriplets">0</strong><span>Triplets</span></div>
+            <div class="score"><strong id="scoreGaps">0</strong><span>Gaps</span></div>
+            <div class="score"><strong id="scoreCoverage">0%</strong><span>Coverage</span></div>
+          </div>
+          <div class="agent-strip" id="agentStrip"></div>
+          <p class="stage-line" id="stageLine">Ready to query evidence.</p>
+        </div>
+
+        <div class="matrix-wrap">
+          <table aria-label="Zachman 6 by 6 ontology matrix">
+            <thead id="matrixHead"></thead>
+            <tbody id="matrixBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <aside class="panel" aria-live="polite">
+        <h2>Operational Detail</h2>
+        <div id="currentTriplet">
+          <p class="graph-note">No triplet created yet.</p>
+        </div>
+        <div class="triplet-box">
+          <h3>Selected cell</h3>
+          <div id="details">Select a populated or unverified matrix cell.</div>
+        </div>
+        <div class="feed" id="feed" aria-label="Operational event feed"></div>
+      </aside>
+    </main>
+
+    <script>
+      const PERSPECTIVES = [
+        ["Row1_Planner", "Planner / Scope"],
+        ["Row2_Owner", "Owner / Business Model"],
+        ["Row3_Designer", "Designer / System Model"],
+        ["Row4_Builder", "Builder / Technology Model"],
+        ["Row5_Implementer", "Implementer / Detailed Representations"],
+        ["Row6_Operator", "Operator / Functioning Enterprise"],
+      ];
+      const INTERROGATIVES = [
+        ["What", "What (Data)"],
+        ["How", "How (Function)"],
+        ["Where", "Where (Network)"],
+        ["Who", "Who (Identity)"],
+        ["When", "When (Time)"],
+        ["Why", "Why (Motivation)"],
+      ];
+      const PILLARS = ["All", "Identity", "Device", "Network", "Application", "Data"];
+      const PREDICATES = {
+        What: "defines",
+        How: "performs",
+        Where: "routes_through",
+        Who: "is_responsible_for",
+        When: "triggers",
+        Why: "justifies",
+      };
+      const LOOP_STAGES = [
+        ["Query", "Graph, SharePoint, or corpus source"],
+        ["Digest", "Normalize evidence into ontology fields"],
+        ["Triplet", "Create Who / How / What and SPO form"],
+        ["Validate", "Check Zachman 6x6 rules"],
+        ["Remediate", "Codify action, owner, and CAB path"],
+      ];
+
+      const sampleArtifacts = [
+        { perspective: "Row1_Planner", interrogative: "What", zt_pillar: "Data", artifact_name: "ProtectSurfaceScope", artifact_content: "CRM customer records and PII dataset.", who: "IT leadership", how: "defines protected surface", what: "customer PII dataset" },
+        { perspective: "Row1_Planner", interrogative: "Who", zt_pillar: "Identity", artifact_name: "IdentityScope", artifact_content: "Sales reps and CRM workload identities.", who: "Identity owner", how: "scopes access actors", what: "user and workload identities" },
+        { perspective: "Row1_Planner", interrogative: "Where", zt_pillar: "Network", artifact_name: "PathScope", artifact_content: "User to API gateway to CRM to DB proxy to PII store.", who: "Network owner", how: "routes protected access", what: "PII access path" },
+        { perspective: "Row1_Planner", interrogative: "Why", zt_pillar: "Identity", artifact_name: "ZeroTrustPrinciple", artifact_content: "Never trust, always verify; default deny; assume breach.", who: "Security governance", how: "justifies control intent", what: "Zero Trust policy rationale" },
+      ];
+
+      const SCENARIOS = {
+        ca: [
+          {
+            query: "GET /identity/conditionalAccess/policies?$filter=state eq 'enabled'",
+            digest: "Enabled Conditional Access policy controls sign-in decisions and requires an ontology How cell.",
+            perspective: "Row4_Builder",
+            interrogative: "How",
+            zt_pillar: "Identity",
+            artifact_name: "CAPolicyEnforcement",
+            artifact_content: "Conditional Access policy enforces MFA and compliant-device grant controls for user sign-in sessions.",
+            who: "CA policy object",
+            how: "enforces sign-in conditions",
+            what: "user sign-in session",
+            remediation: "No action. Maintain evidence freshness and review policy exclusions.",
+          },
+          {
+            query: "GET /identity/conditionalAccess/namedLocations",
+            digest: "Named Location is referenced by enforcement but lacks a documented policy-intent record.",
+            perspective: "Row4_Builder",
+            interrogative: "Where",
+            zt_pillar: "Network",
+            artifact_name: "NamedLocationBoundary",
+            artifact_content: "Named Location scopes trusted and blocked sign-in network boundaries for Conditional Access.",
+            who: "Named Location",
+            how: "scopes enforcement boundary",
+            what: "user sign-in session",
+            gap: true,
+            remediation: "Create Row4_Builder / Why artifact documenting policy intent, owner, and approval for the named-location boundary.",
+          },
+        ],
+        zsp: [
+          {
+            query: "GET /roleManagement/directory/roleAssignments?$expand=principal",
+            digest: "Standing privileged role assignment conflicts with Zero Standing Privilege intent.",
+            perspective: "Row4_Builder",
+            interrogative: "Who",
+            zt_pillar: "Identity",
+            artifact_name: "PrivilegedRoleAssignment",
+            artifact_content: "Directory role assignment grants privileged access outside PIM activation.",
+            who: "PIM role assignment",
+            how: "grants privileged access",
+            what: "identity token",
+            gap: true,
+            remediation: "Move assignment behind PIM eligible activation, require approval, and attach CAB evidence for Tier 0 roles.",
+          },
+        ],
+        device: [
+          {
+            query: "GET /deviceManagement/deviceCompliancePolicies",
+            digest: "Intune compliance policy is a device-trust producer consumed by Conditional Access.",
+            perspective: "Row4_Builder",
+            interrogative: "What",
+            zt_pillar: "Device",
+            artifact_name: "DeviceComplianceSignal",
+            artifact_content: "Device compliance state is produced by Intune and consumed by Conditional Access grant controls.",
+            who: "Intune compliance policy",
+            how: "evaluates device trust",
+            what: "device compliance state",
+            remediation: "No action. Confirm CA consumer policies reference current compliance signals.",
+          },
+        ],
+        drift: [
+          {
+            query: "GET /auditLogs/signIns?$filter=createdDateTime ge {windowStart}",
+            digest: "Sign-in logs update operational evidence freshness for enforcement-state reconciliation.",
+            perspective: "Row6_Operator",
+            interrogative: "When",
+            zt_pillar: "Identity",
+            artifact_name: "SignInEvaluationWindow",
+            artifact_content: "Sign-in audit events provide the timestamped evaluation window for Conditional Access drift detection.",
+            who: "CA evaluation log",
+            how: "records sign-in result",
+            what: "audit log entry",
+            remediation: "No action. Retain evidence window and compare against ratified baseline.",
+          },
+          {
+            query: "GET /roleManagement/directory/roleAssignmentScheduleInstances",
+            digest: "Active privileged assignment is outside the ratified baseline and requires correction.",
+            perspective: "Row6_Operator",
+            interrogative: "Who",
+            zt_pillar: "Identity",
+            artifact_name: "StandingPrivilegeDrift",
+            artifact_content: "Operational role assignment exists without matching approved PIM activation schedule.",
+            who: "Active privileged assignment",
+            how: "deviates from baseline",
+            what: "role activation event",
+            gap: true,
+            remediation: "Open Tier 0 remediation package, remove standing assignment, and route evidence to CAB approval.",
+          },
+        ],
+      };
+
+      let artifacts = [...sampleArtifacts];
+      let selected = null;
+      let currentTriplets = 0;
+      let currentGaps = 0;
+      let loopTimers = [];
+      let loopIndex = 0;
+      let loopPaused = false;
+
+      function escapeHtml(value) {
+        return String(value ?? "").replace(/[&<>"']/g, (c) => ({
+          "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+        }[c]));
+      }
+
+      function normalizeGraphItem(item, sourceQuery = "") {
+        const f = item.fields || item;
+        return {
+          perspective: f.perspective || f.SNY_Perspective || f.Perspective,
+          interrogative: f.interrogative || f.SNY_Interrogative || f.Interrogative,
+          zt_pillar: f.zt_pillar || f.SNY_ZTPillar || f.SNY_ZT_Pillar || f.ZTPillar,
+          artifact_name: f.artifact_name || f.SNY_ArtifactName || f.ArtifactName || f.Title,
+          artifact_content: f.artifact_content || f.SNY_ArtifactContent || f.ArtifactContent || f.Description || "",
+          query: f.query || f.SNY_Query || sourceQuery,
+          digest: f.digest || f.SNY_Digest || "Graph row normalized into Zachman ontology fields.",
+          who: f.who || f.SNY_Who || f.Owner || "Evidence owner",
+          how: f.how || f.SNY_How || `${PREDICATES[f.interrogative || f.SNY_Interrogative] || "relates to"} ontology cell`,
+          what: f.what || f.SNY_What || f.artifact_content || f.SNY_ArtifactContent || f.Description || "",
+          remediation: f.remediation || f.SNY_Remediation || "",
+        };
+      }
+
+      function codifyTriplet(artifact) {
+        const subject = `${artifact.perspective || "UnknownPerspective"}.${artifact.interrogative || "UnknownInterrogative"}.${artifact.artifact_name || ""}`.replace(/\.$/, "");
+        const predicate = PREDICATES[artifact.interrogative] || "relates_to";
+        const object = (artifact.artifact_content || "").trim();
+        if (!artifact.artifact_name || !object) {
+          return {
+            triplet: `${subject} ${predicate} <missing object>`,
+            remediation: "Add artifact_name and artifact_content so this Zachman cell can be expressed as Subject Predicate Object.",
+          };
+        }
+        if (!artifact.zt_pillar) {
+          return {
+            triplet: `${subject} ${predicate} ${object}`,
+            remediation: "Set zt_pillar to Identity, Device, Network, Application, or Data.",
+          };
+        }
+        return { triplet: `${subject} ${predicate} ${object}`, remediation: "" };
+      }
+
+      function artifactsForCell(perspective, interrogative) {
+        const pillar = document.getElementById("pillarFilter").value;
+        return artifacts
+          .filter((a) => a.perspective === perspective && a.interrogative === interrogative)
+          .filter((a) => pillar === "All" || a.zt_pillar === pillar)
+          .sort((a, b) => `${a.zt_pillar}:${a.artifact_name}`.localeCompare(`${b.zt_pillar}:${b.artifact_name}`));
+      }
+
+      function validateCell(perspective, interrogative) {
+        const allCellArtifacts = artifacts.filter((a) => a.perspective === perspective && a.interrogative === interrogative);
+        if (!allCellArtifacts.length) return { status: "Unverified", issues: [] };
+
+        const issues = [];
+        const hasWhereNetwork = artifacts.some((a) => a.perspective === perspective && a.interrogative === "Where" && a.zt_pillar === "Network");
+        const hasWhy = artifacts.some((a) => a.perspective === perspective && a.interrogative === "Why");
+        if (interrogative === "Where" && hasWhereNetwork && !hasWhy) {
+          issues.push({
+            code: "ZT_WHERE_REQUIRES_WHY",
+            message: "Network path/route exists without a corresponding Why policy-intent artifact.",
+            triplet: `${perspective}.Where.Network routes_through <network path> requires ${perspective}.Why.<policy intent>`,
+            remediation: "Create a Why artifact for the same Zachman perspective that states policy intent, governance rationale, and approval authority for the network path.",
+          });
+        }
+        for (const artifact of allCellArtifacts) {
+          const coded = codifyTriplet(artifact);
+          if (coded.remediation) {
+            issues.push({
+              code: "ZACHMAN_TRIPLET_INCOMPLETE",
+              message: "Artifact cannot be expressed as a complete Zachman subject-predicate-object triplet.",
+              ...coded,
+            });
+          }
+          if (artifact.gap) {
+            issues.push({
+              code: "OPERATIONAL_GAP",
+              message: "Operational loop marked this evidence as a gap that requires governed remediation.",
+              triplet: coded.triplet,
+              remediation: artifact.remediation || "Create a remediation package with owner, approval route, and evidence link.",
+            });
+          }
+        }
+        return issues.length ? { status: "Invalid", issues } : { status: "Valid", issues: [] };
+      }
+
+      function renderAgentStrip(active = -1, doneThrough = -1) {
+        document.getElementById("agentStrip").innerHTML = LOOP_STAGES.map(([name, sub], idx) => {
+          const klass = idx === active ? "active" : idx <= doneThrough ? "done" : "";
+          return `<div class="agent-node ${klass}"><strong>${idx + 1}. ${escapeHtml(name)}</strong><span>${escapeHtml(sub)}</span></div>`;
+        }).join("");
+      }
+
+      function renderScores(stage = "Idle") {
+        const covered = new Set(artifacts.map((a) => `${a.perspective}:${a.interrogative}`)).size;
+        currentTriplets = artifacts.filter((a) => !codifyTriplet(a).remediation).length;
+        currentGaps = artifacts.filter((a) => a.gap).length;
+        document.getElementById("scoreStage").textContent = stage;
+        document.getElementById("scoreArtifacts").textContent = artifacts.length;
+        document.getElementById("scoreTriplets").textContent = currentTriplets;
+        document.getElementById("scoreGaps").textContent = currentGaps;
+        document.getElementById("scoreCoverage").textContent = `${Math.round((covered / 36) * 100)}%`;
+      }
+
+      function renderMatrix() {
+        document.getElementById("matrixHead").innerHTML = `
+          <tr>
+            <th>Perspective \\ Interrogative</th>
+            ${INTERROGATIVES.map(([, label]) => `<th>${escapeHtml(label)}</th>`).join("")}
+          </tr>`;
+
+        document.getElementById("matrixBody").innerHTML = PERSPECTIVES.map(([pKey, pLabel]) => `
+          <tr>
+            <th class="row-head">${escapeHtml(pLabel)}<br><code>${escapeHtml(pKey)}</code></th>
+            ${INTERROGATIVES.map(([iKey]) => {
+              const items = artifactsForCell(pKey, iKey);
+              const validation = validateCell(pKey, iKey);
+              const klass = validation.status.toLowerCase();
+              return `<td>
+                <button class="cell-btn ${klass}" data-perspective="${pKey}" data-interrogative="${iKey}">
+                  <strong>${validation.status}</strong>
+                  <span class="cell-count">${items.length} artifact${items.length === 1 ? "" : "s"}</span>
+                </button>
+              </td>`;
+            }).join("")}
+          </tr>`).join("");
+
+        document.querySelectorAll(".cell-btn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            selected = {
+              perspective: btn.dataset.perspective,
+              interrogative: btn.dataset.interrogative,
+            };
+            renderDetails();
+          });
+        });
+        if (selected) renderDetails();
+        renderScores(document.getElementById("scoreStage").textContent);
+      }
+
+      function renderCurrentTriplet(artifact) {
+        if (!artifact) {
+          document.getElementById("currentTriplet").innerHTML = `<p class="graph-note">No triplet created yet.</p>`;
+          return;
+        }
+        const coded = codifyTriplet(artifact);
+        document.getElementById("currentTriplet").innerHTML = `
+          <div class="triplet-leg"><span>Query</span>${escapeHtml(artifact.query || "Local corpus event")}</div>
+          <div class="triplet-leg"><span>Digest</span>${escapeHtml(artifact.digest || "Ontology digest complete.")}</div>
+          <div class="triplet-leg"><span>Who</span>${escapeHtml(artifact.who || "Evidence owner")}</div>
+          <div class="triplet-leg"><span>How</span>${escapeHtml(artifact.how || PREDICATES[artifact.interrogative] || "relates to")}</div>
+          <div class="triplet-leg"><span>What</span>${escapeHtml(artifact.what || artifact.artifact_content || "")}</div>
+          <pre>${escapeHtml(coded.triplet)}</pre>
+          ${artifact.remediation || coded.remediation ? `<div class="remediation"><strong>Remediation:</strong> ${escapeHtml(artifact.remediation || coded.remediation)}</div>` : ""}
+        `;
+      }
+
+      function renderDetails() {
+        if (!selected) return;
+        const validation = validateCell(selected.perspective, selected.interrogative);
+        const items = artifactsForCell(selected.perspective, selected.interrogative);
+        const details = document.getElementById("details");
+        details.innerHTML = `
+          <p><strong>Perspective:</strong> <code>${escapeHtml(selected.perspective)}</code></p>
+          <p><strong>Interrogative:</strong> <code>${escapeHtml(selected.interrogative)}</code></p>
+          <p><span class="status ${validation.status.toLowerCase()}">${validation.status}</span></p>
+          ${validation.issues.map((issue) => `
+            <div class="remediation">
+              <strong>${escapeHtml(issue.code)}</strong><br>
+              ${escapeHtml(issue.message)}
+              <pre>${escapeHtml(issue.triplet || "")}</pre>
+              <strong>Remediation:</strong> ${escapeHtml(issue.remediation || "Review and complete the cell metadata.")}
+            </div>`).join("")}
+          ${items.length ? items.map((a) => {
+            const coded = codifyTriplet(a);
+            return `<div class="artifact">
+              <h3>${escapeHtml(a.zt_pillar)} - ${escapeHtml(a.artifact_name)}</h3>
+              <pre>${escapeHtml(coded.triplet)}</pre>
+              ${a.remediation || coded.remediation ? `<div class="remediation"><strong>Remediation:</strong> ${escapeHtml(a.remediation || coded.remediation)}</div>` : ""}
+              <p>${escapeHtml(a.artifact_content)}</p>
+            </div>`;
+          }).join("") : "<p>No artifacts match the current pillar filter.</p>"}
+        `;
+      }
+
+      function addFeed(stage, text, badge = "") {
+        const feed = document.getElementById("feed");
+        const row = document.createElement("div");
+        row.className = "feed-row";
+        row.innerHTML = `<span class="feed-stage">${escapeHtml(stage)}</span><span>${escapeHtml(text)}</span><span class="feed-badge">${escapeHtml(badge)}</span>`;
+        feed.insertBefore(row, feed.firstChild);
+        while (feed.children.length > 24) feed.removeChild(feed.lastChild);
+      }
+
+      function stopTimers() {
+        loopTimers.forEach((id) => clearTimeout(id));
+        loopTimers = [];
+      }
+
+      function delay() {
+        const speed = Number(document.getElementById("speed").value || 3);
+        return [1400, 1050, 760, 520, 320][speed - 1];
+      }
+
+      function schedule(fn, ms) {
+        const id = setTimeout(fn, ms);
+        loopTimers.push(id);
+      }
+
+      function processScenarioEvent(event) {
+        const artifact = normalizeGraphItem(event, event.query);
+        artifact.gap = Boolean(event.gap);
+        const steps = [
+          () => {
+            renderAgentStrip(0, -1);
+            renderScores("Query");
+            document.getElementById("stageLine").textContent = event.query;
+            addFeed("Query", event.query, "source");
+          },
+          () => {
+            renderAgentStrip(1, 0);
+            renderScores("Digest");
+            document.getElementById("stageLine").textContent = event.digest;
+            addFeed("Digest", event.digest, artifact.zt_pillar);
+          },
+          () => {
+            renderAgentStrip(2, 1);
+            renderScores("Triplet");
+            renderCurrentTriplet(artifact);
+            addFeed("Triplet", `${artifact.who} -> ${artifact.how} -> ${artifact.what}`, artifact.interrogative);
+          },
+          () => {
+            renderAgentStrip(3, 2);
+            artifacts.push(artifact);
+            selected = { perspective: artifact.perspective, interrogative: artifact.interrogative };
+            renderMatrix();
+            renderDetails();
+            renderScores("Validate");
+            const validation = validateCell(artifact.perspective, artifact.interrogative);
+            addFeed("Validate", `${artifact.perspective} / ${artifact.interrogative}: ${validation.status}`, validation.status);
+          },
+          () => {
+            renderAgentStrip(4, 3);
+            renderScores("Remediate");
+            const coded = codifyTriplet(artifact);
+            const action = artifact.remediation || coded.remediation || "No remediation required. Evidence is traceable and complete.";
+            document.getElementById("stageLine").textContent = action;
+            addFeed("Remediate", action, artifact.gap ? "gap" : "ok");
+          },
+        ];
+        steps.forEach((fn, idx) => schedule(fn, idx * delay()));
+        schedule(() => {
+          renderAgentStrip(-1, 4);
+          loopIndex += 1;
+          if (!loopPaused) runNextScenarioEvent();
+        }, steps.length * delay());
+      }
+
+      function runNextScenarioEvent() {
+        const scenario = SCENARIOS[document.getElementById("scenario").value];
+        if (loopIndex >= scenario.length) {
+          renderScores("Done");
+          document.getElementById("stageLine").textContent = "Loop complete. Matrix is populated from query-first evidence.";
+          return;
+        }
+        processScenarioEvent(scenario[loopIndex]);
+      }
+
+      function startLoop() {
+        stopTimers();
+        loopPaused = false;
+        if (loopIndex >= SCENARIOS[document.getElementById("scenario").value].length) loopIndex = 0;
+        runNextScenarioEvent();
+      }
+
+      function pauseLoop() {
+        stopTimers();
+        loopPaused = true;
+        renderScores("Paused");
+        document.getElementById("stageLine").textContent = "Loop paused.";
+      }
+
+      function resetLoop() {
+        stopTimers();
+        loopIndex = 0;
+        loopPaused = false;
+        artifacts = [...sampleArtifacts];
+        selected = null;
+        document.getElementById("feed").innerHTML = "";
+        renderAgentStrip();
+        renderCurrentTriplet(null);
+        renderScores("Idle");
+        document.getElementById("stageLine").textContent = "Ready to query evidence.";
+        document.getElementById("details").textContent = "Select a populated or unverified matrix cell.";
+        renderMatrix();
+      }
+
+      async function loadFromGraph() {
+        const endpoint = document.getElementById("graphEndpoint").value.trim();
+        const token = document.getElementById("accessToken").value.trim();
+        if (!endpoint || !token) {
+          alert("Provide both a Microsoft Graph endpoint and bearer token.");
+          return;
+        }
+        stopTimers();
+        renderAgentStrip(0, -1);
+        renderScores("Query");
+        addFeed("Query", endpoint, "Graph");
+        const response = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
+        if (!response.ok) {
+          throw new Error(`Graph request failed: ${response.status} ${await response.text()}`);
+        }
+        const payload = await response.json();
+        const rows = Array.isArray(payload.value) ? payload.value : payload;
+        renderAgentStrip(1, 0);
+        renderScores("Digest");
+        addFeed("Digest", `Normalized ${rows.length} Graph row(s) into ontology fields.`, "rows");
+        artifacts = rows.map((row) => normalizeGraphItem(row, endpoint)).filter((a) => a.perspective && a.interrogative);
+        renderAgentStrip(2, 1);
+        artifacts.forEach((a) => codifyTriplet(a));
+        renderScores("Triplet");
+        if (artifacts[0]) renderCurrentTriplet(artifacts[0]);
+        addFeed("Triplet", `Created ${artifacts.length} Zachman triplet candidate(s).`, "SPO");
+        renderAgentStrip(3, 2);
+        selected = artifacts[0] ? { perspective: artifacts[0].perspective, interrogative: artifacts[0].interrogative } : null;
+        renderMatrix();
+        renderAgentStrip(4, 3);
+        renderScores("Remediate");
+        document.getElementById("details").textContent = `Loaded ${artifacts.length} artifacts from Graph.`;
+        addFeed("Remediate", "Validation issues now show codified remediation in the selected cell panel.", "ready");
+      }
+
+      function init() {
+        const pillar = document.getElementById("pillarFilter");
+        pillar.innerHTML = PILLARS.map((p) => `<option value="${p}">${p}</option>`).join("");
+        pillar.addEventListener("change", renderMatrix);
+        document.getElementById("loadSample").addEventListener("click", resetLoop);
+        document.getElementById("loadGraph").addEventListener("click", () => {
+          loadFromGraph().catch((err) => {
+            document.getElementById("details").innerHTML = `<div class="remediation"><strong>Graph load failed:</strong> ${escapeHtml(err.message)}</div>`;
+            addFeed("Query", `Graph load failed: ${err.message}`, "error");
+          });
+        });
+        document.getElementById("runLoop").addEventListener("click", startLoop);
+        document.getElementById("pauseLoop").addEventListener("click", pauseLoop);
+        document.getElementById("resetLoop").addEventListener("click", resetLoop);
+        renderAgentStrip();
+        renderScores("Idle");
+        renderMatrix();
+      }
+
+      init();
+    </script>
   </body>
 </html>
 

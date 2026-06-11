@@ -16,6 +16,8 @@ class CellStatus(str, Enum):
 class CellIssue:
     code: str
     message: str
+    remediation: str = ""
+    triplet: str = ""
 
 
 @dataclass(frozen=True)
@@ -58,7 +60,14 @@ def validate_cell(artifacts: list[dict], perspective: str, interrogative: str) -
     issues: list[CellIssue] = []
     for rule in registry.rules():
         for v in rule.fn(ctx):
-            issues.append(CellIssue(code=v.code, message=v.message))
+            issues.append(
+                CellIssue(
+                    code=v.code,
+                    message=v.message,
+                    remediation=v.remediation,
+                    triplet=v.triplet,
+                )
+            )
 
     if issues:
         return CellValidation(status=CellStatus.INVALID, issues=tuple(issues))

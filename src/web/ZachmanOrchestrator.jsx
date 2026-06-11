@@ -14,7 +14,7 @@
  * <ZachmanOrchestrator artifacts={artifacts} />
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 const PERSPECTIVES = [
   ["Row1_Planner", "Planner / Scope"],
@@ -35,6 +35,14 @@ const INTERROGATIVES = [
 ];
 
 const ZT_PILLARS = ["All", "Identity", "Device", "Network", "Application", "Data"];
+const INTERROGATIVE_PREDICATES = {
+  What: "defines",
+  How: "performs",
+  Where: "routes_through",
+  Who: "is_responsible_for",
+  When: "triggers",
+  Why: "justifies",
+};
 
 function hasCell(artifacts, perspective, interrogative, pillar) {
   return artifacts.some((a) => {
@@ -45,6 +53,29 @@ function hasCell(artifacts, perspective, interrogative, pillar) {
 }
 
 /** Mirrors `src/validation/rules.py` default registry (client-side preview). */
+function codifyTriplet(artifact) {
+  const subject = `${artifact.perspective || "UnknownPerspective"}.${
+    artifact.interrogative || "UnknownInterrogative"
+  }.${artifact.artifact_name || ""}`.replace(/\.$/, "");
+  const predicate = INTERROGATIVE_PREDICATES[artifact.interrogative] || "relates_to";
+  const object = (artifact.artifact_content || "").trim();
+
+  if (!artifact.artifact_name || !object) {
+    return {
+      triplet: `${subject} ${predicate} <missing object>`,
+      remediation:
+        "Add artifact_name and artifact_content so this Zachman cell can be expressed as Subject Predicate Object.",
+    };
+  }
+  if (!artifact.zt_pillar) {
+    return {
+      triplet: `${subject} ${predicate} ${object}`,
+      remediation: "Set zt_pillar to Identity, Device, Network, Application, or Data.",
+    };
+  }
+  return { triplet: `${subject} ${predicate} ${object}`, remediation: "" };
+}
+
 function validateCell(artifacts, perspective, interrogative) {
   const existsAny = hasCell(artifacts, perspective, interrogative);
   if (!existsAny) {
@@ -60,12 +91,45 @@ function validateCell(artifacts, perspective, interrogative) {
       code: "ZT_WHERE_REQUIRES_WHY",
       message:
         "Network path/route exists without a corresponding Why (policy intent/governance) artifact.",
+      triplet: `${perspective}.Where.Network routes_through <network path> requires ${perspective}.Why.<policy intent>`,
+      remediation:
+        "Create a Why artifact for the same Zachman perspective that states policy intent, governance rationale, and approval authority for the network path.",
     });
+  }
+  for (const artifact of artifacts) {
+    if (artifact.perspective !== perspective || artifact.interrogative !== interrogative) continue;
+    const coded = codifyTriplet(artifact);
+    if (coded.remediation) {
+      issues.push({
+        code: "ZACHMAN_TRIPLET_INCOMPLETE",
+        message:
+          "Artifact cannot be expressed as a complete Zachman subject-predicate-object triplet.",
+        ...coded,
+      });
+    }
   }
   if (issues.length) {
     return { status: "Invalid", issues };
   }
   return { status: "Valid", issues: [] };
+}
+
+function normalizeGraphItem(item) {
+  const fields = item.fields || item;
+  return {
+    perspective: fields.perspective || fields.SNY_Perspective || fields.Perspective,
+    interrogative: fields.interrogative || fields.SNY_Interrogative || fields.Interrogative,
+    zt_pillar: fields.zt_pillar || fields.SNY_ZTPillar || fields.SNY_ZT_Pillar || fields.ZTPillar,
+    artifact_name: fields.artifact_name || fields.SNY_ArtifactName || fields.ArtifactName || fields.Title,
+    artifact_content:
+      fields.artifact_content || fields.SNY_ArtifactContent || fields.ArtifactContent || fields.Description || "",
+    query: fields.query || fields.SNY_Query || "",
+    digest: fields.digest || fields.SNY_Digest || "",
+    who: fields.who || fields.SNY_Who || fields.Owner || "",
+    how: fields.how || fields.SNY_How || "",
+    what: fields.what || fields.SNY_What || "",
+    remediation: fields.remediation || fields.SNY_Remediation || "",
+  };
 }
 
 function cellVisibleUnderPillar(artifacts, perspective, interrogative, pillar) {
@@ -168,10 +232,37 @@ const styles = {
 export default function ZachmanOrchestrator({
   artifacts = [],
   onCellSelect,
+  graphEndpoint,
+  graphAccessToken,
 }) {
+  const [graphArtifacts, setGraphArtifacts] = useState([]);
+  const [graphError, setGraphError] = useState("");
   const [pillar, setPillar] = useState("All");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
+  const effectiveArtifacts = graphArtifacts.length ? graphArtifacts : artifacts;
+
+  useEffect(() => {
+    if (!graphEndpoint || !graphAccessToken) return;
+    let cancelled = false;
+    fetch(graphEndpoint, { headers: { Authorization: `Bearer ${graphAccessToken}` } })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`Graph request failed: ${res.status} ${await res.text()}`);
+        return res.json();
+      })
+      .then((payload) => {
+        if (cancelled) return;
+        const rows = Array.isArray(payload.value) ? payload.value : payload;
+        setGraphArtifacts(rows.map(normalizeGraphItem).filter((a) => a.perspective && a.interrogative));
+        setGraphError("");
+      })
+      .catch((err) => {
+        if (!cancelled) setGraphError(err.message);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [graphEndpoint, graphAccessToken]);
 
   const handleCellClick = useCallback(
     (perspKey, interKey) => {
@@ -185,29 +276,34 @@ export default function ZachmanOrchestrator({
   const selectedItems = useMemo(() => {
     if (!selected) return [];
     return artifactsForCell(
-      artifacts,
+      effectiveArtifacts,
       selected.perspective,
       selected.interrogative,
       pillar,
       search
     );
-  }, [artifacts, selected, pillar, search]);
+  }, [effectiveArtifacts, selected, pillar, search]);
 
   const selectedValidation = useMemo(() => {
     if (!selected) return null;
-    return validateCell(artifacts, selected.perspective, selected.interrogative);
-  }, [artifacts, selected]);
+    return validateCell(effectiveArtifacts, selected.perspective, selected.interrogative);
+  }, [effectiveArtifacts, selected]);
 
   return (
     <div style={styles.root}>
       <div style={styles.main}>
         <h1 style={{ marginTop: 0, fontSize: "1.35rem" }}>
-          VERIDM — Zachman Matrix (6×6) for Zero Trust
+          Trudy — Zachman Matrix (6×6) for Zero Trust
         </h1>
         <p style={styles.caption}>
-          Perspectives (rows) × interrogatives (columns). Click a cell to inspect Zero Trust
-          artifacts. Cells respect the pillar filter and search in the sidebar.
+          Query evidence, digest it into ontology fields, create Zachman triplets, then validate
+          and remediate the 6×6 cell. Cells respect the pillar filter and search in the sidebar.
         </p>
+        {graphError && (
+          <p style={{ color: "#a83232", fontSize: "0.9rem" }}>
+            Graph load failed: {graphError}
+          </p>
+        )}
 
         <div style={styles.filters}>
           <label style={styles.label}>
@@ -261,8 +357,8 @@ export default function ZachmanOrchestrator({
                   <code style={{ fontSize: "0.65rem" }}>{perspKey}</code>
                 </td>
                 {INTERROGATIVES.map(([interKey]) => {
-                  const enabled = cellVisibleUnderPillar(artifacts, perspKey, interKey, pillar);
-                  const validation = validateCell(artifacts, perspKey, interKey);
+                  const enabled = cellVisibleUnderPillar(effectiveArtifacts, perspKey, interKey, pillar);
+                  const validation = validateCell(effectiveArtifacts, perspKey, interKey);
                   let btnLabel = "—";
                   if (enabled) {
                     if (validation.status === "Valid") btnLabel = "View (Valid)";
@@ -317,6 +413,12 @@ export default function ZachmanOrchestrator({
                   {selectedValidation.issues.map((issue) => (
                     <li key={issue.code} style={styles.issue}>
                       <code>{issue.code}</code>: {issue.message}
+                      {issue.triplet && (
+                        <pre style={{ whiteSpace: "pre-wrap" }}>{issue.triplet}</pre>
+                      )}
+                      {issue.remediation && (
+                        <div style={{ color: "#a83232" }}>Remediation: {issue.remediation}</div>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -332,6 +434,24 @@ export default function ZachmanOrchestrator({
                   <strong>
                     {a.zt_pillar} — {a.artifact_name}
                   </strong>
+                  <pre style={{ whiteSpace: "pre-wrap", fontSize: "0.78rem" }}>
+                    {codifyTriplet(a).triplet}
+                  </pre>
+                  {codifyTriplet(a).remediation && (
+                    <div style={{ color: "#a83232", fontSize: "0.85rem" }}>
+                      Remediation: {codifyTriplet(a).remediation}
+                    </div>
+                  )}
+                  {(a.query || a.digest || a.who || a.how || a.what || a.remediation) && (
+                    <div style={{ fontSize: "0.82rem", color: "#444" }}>
+                      {a.query && <p><strong>Query:</strong> {a.query}</p>}
+                      {a.digest && <p><strong>Digest:</strong> {a.digest}</p>}
+                      {(a.who || a.how || a.what) && (
+                        <p><strong>Who/How/What:</strong> {[a.who, a.how, a.what].filter(Boolean).join(" -> ")}</p>
+                      )}
+                      {a.remediation && <p style={{ color: "#a83232" }}><strong>Remediation:</strong> {a.remediation}</p>}
+                    </div>
+                  )}
                   <p style={{ margin: "0.35rem 0 0", whiteSpace: "pre-wrap", fontSize: "0.88rem" }}>
                     {a.artifact_content || ""}
                   </p>
@@ -344,3 +464,4 @@ export default function ZachmanOrchestrator({
     </div>
   );
 }
+

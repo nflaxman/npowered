@@ -6,7 +6,11 @@ BEGIN TRANSACTION;
 -- Reference data
 INSERT OR IGNORE INTO zachman_perspectives(perspective, perspective_order, label) VALUES
   ('Row1_Planner', 1, 'Planner / Scope'),
-  ('Row2_Owner',   2, 'Owner / Business Model');
+  ('Row2_Owner',   2, 'Owner / Business Model'),
+  ('Row3_Designer', 3, 'Designer / System Model'),
+  ('Row4_Builder', 4, 'Builder / Technology Model'),
+  ('Row5_Implementer', 5, 'Implementer / Detailed Representations'),
+  ('Row6_Operator', 6, 'Operator / Functioning Enterprise');
 
 INSERT OR IGNORE INTO zachman_interrogatives(interrogative, interrogative_order, label) VALUES
   ('What',  1, 'Data / Things'),

@@ -3,7 +3,7 @@
 ## Current Decisions
 
 1. **Canonical Zachman × ZT ontology in-repo**
-   - The narrative ontology document is maintained at `docs/ZACHMAN_ONTOLOGY_FOR_AI_ARCHITECTURE.md` and is the primary semantic reference for rows/columns, ZT pillars, and veridm workflow language.
+   - The narrative ontology document is maintained at `docs/ZACHMAN_ONTOLOGY_FOR_AI_ARCHITECTURE.md` and is the primary semantic reference for rows/columns, ZT pillars, and Trudy workflow language.
 
 2. **Separate documentation, code, and data**
    - `docs/` contains design/decision documents.
@@ -23,4 +23,5 @@
 - Choosing the primary database technology for production deployment.
 - Defining the full Zachman ontology (row/column labels, normalization, constraints).
 - Wiring the web UI to query the database (API layer, auth, pagination, etc.).
+
 

@@ -1,7 +1,7 @@
 # Architecture
 
 ## Canonical ontology reference
-The full narrative ontology (Zachman columns/rows, Zero Trust pillars, veridm discipline, Codex prompt workflow, and cited sources) lives in:
+The full narrative ontology (Zachman columns/rows, Zero Trust pillars, Trudy discipline, Codex prompt workflow, and cited sources) lives in:
 
 - [`docs/ZACHMAN_ONTOLOGY_FOR_AI_ARCHITECTURE.md`](ZACHMAN_ONTOLOGY_FOR_AI_ARCHITECTURE.md)
 
@@ -22,11 +22,11 @@ This project is organized into three layers:
 3. The web page in `src/web/` can later query/display the ingested results.
 
 ## AI-mediated reification (ontology validation)
-In a veridm-enabled system, the logic layer does not only execute changes; it **validates changes against the ontology**.
+In a Trudy-enabled system, the logic layer does not only execute changes; it **validates changes against the ontology**.
 
 Conceptually:
 - A developer (the “Sub-contractor”) proposes a change (often in lower rows like Row 5).
-- veridm AI checks the proposal against:
+- Trudy AI checks the proposal against:
   - `docs/AI_CONTRACT.md` (process + constraints)
   - Row 3 designer models (logical/architectural intent; represented as artifacts in `zachman_cells`)
 - If the change introduces inconsistencies (e.g., a new **Where** network route without a corresponding **Why** access policy intent),
@@ -51,4 +51,5 @@ This enables a “self-healing” architecture where inconsistencies are detecte
 - `src/web/`: UI scaffolding (static HTML + later JS).
 - `src/db/`: schema + ingestion (CSV -> DB).
 - `data/zachman/`: initial CSV ingestion data.
+
 

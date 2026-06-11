@@ -15,7 +15,7 @@ class DuckDbPaths:
 
 def default_paths(repo_root: Path) -> DuckDbPaths:
     return DuckDbPaths(
-        db_path=repo_root / "data" / "veridm.duckdb",
+        db_path=repo_root / "data" / "trudy.duckdb",
         schema_sql_path=repo_root / "src" / "db" / "duckdb" / "schema.sql",
         seed_sql_path=repo_root / "src" / "db" / "duckdb" / "seed_row1_row2_protect_surface.sql",
     )
@@ -33,4 +33,5 @@ def ensure_db(paths: DuckDbPaths) -> None:
 
 def connect(paths: DuckDbPaths) -> duckdb.DuckDBPyConnection:
     return duckdb.connect(str(paths.db_path))
+
 
